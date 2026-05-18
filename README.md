@@ -64,13 +64,13 @@ A parallel branch sends the full payload (including missing materials and AI sug
 The prompt is dynamically constructed:
 
 ```
-You are a construction materials pricing expert in the Philippines.
+You are a construction materials pricing expert in the Australia.
 The following materials were NOT found in our internal price list or are currently unavailable:
 
 {{missingItemsJSON}}
 
 For each item:
-1. Estimate a reasonable current market unit price (in PHP).
+1. Estimate a reasonable current market unit price (in AUD).
 2. Suggest one widely available alternative if the exact item is hard to source.
 3. Briefly note your pricing source assumption.
 
