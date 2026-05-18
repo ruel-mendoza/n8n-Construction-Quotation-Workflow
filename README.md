@@ -1,6 +1,10 @@
-Production-Ready n8n Construction Quotation Workflow
-Part 1: Architectural Logic Breakdown
-Flow Overview
+# Production-Ready n8n Construction Quotation Workflow
+
+## Part 1: Architectural Logic Breakdown
+
+### Flow Overview
+
+```
 Webhook/Form Trigger
        ↓
 Google Sheets Fetch (full price list)
@@ -21,31 +25,45 @@ Code Node: Merge & Calculate Total
 Customer   Internal
  Email     Notification
 (Gmail)  (Slack/Teams)
+```
 
-Stage-by-Stage Logic
-Stage 1 — Trigger
-A Webhook node receives a POST payload with customer_email and requested_materials (array of { name, quantity }). A Form Trigger variant is also supported.
-Stage 2 — Google Sheets Fetch
-A single Google Sheets → Get Many Rows call pulls the entire price list sheet into memory. This avoids per-item API calls and is far more efficient.
-Stage 3 — Code Node: Material Cross-Reference
-A JavaScript Code node iterates over every requested material and checks against the fetched sheet rows. It produces two arrays:
+---
 
-matched — items found in the sheet AND marked Availability: Yes, with unit price × quantity subtotal.
-missing — items not found OR where Availability: No.
+### Stage-by-Stage Logic
 
-Stage 4 — IF Branch
-An IF node checks {{ $json.missing.length > 0 }}. If true, the flow routes to the AI Agent; if false (all items available), it skips directly to the merge/calculation step.
-Stage 5 — AI Agent (Fallback)
-An OpenAI or Anthropic node receives a structured prompt containing the missing items list. It is instructed to return a JSON array of { name, estimated_unit_price, source_note, alternative_suggestion }. An optional HTTP Request node can be chained to perform a live web search (SerpAPI or similar) to ground the estimates.
-Stage 6 — Merge & Calculate
-A second Code node combines matched items + AI-estimated items, calculates line totals, grand total, and flags which items are estimated vs. confirmed.
-Stage 7 — Customer Email (Gmail)
+**Stage 1 — Trigger**
+A `Webhook` node receives a POST payload with `customer_email` and `requested_materials` (array of `{ name, quantity }`). A Form Trigger variant is also supported.
+
+**Stage 2 — Google Sheets Fetch**
+A single `Google Sheets → Get Many Rows` call pulls the entire price list sheet into memory. This avoids per-item API calls and is far more efficient.
+
+**Stage 3 — Code Node: Material Cross-Reference**
+A JavaScript `Code` node iterates over every requested material and checks against the fetched sheet rows. It produces two arrays:
+- `matched` — items found in the sheet AND marked `Availability: Yes`, with unit price × quantity subtotal.
+- `missing` — items not found OR where `Availability: No`.
+
+**Stage 4 — IF Branch**
+An `IF` node checks `{{ $json.missing.length > 0 }}`. If true, the flow routes to the AI Agent; if false (all items available), it skips directly to the merge/calculation step.
+
+**Stage 5 — AI Agent (Fallback)**
+An `OpenAI` or `Anthropic` node receives a structured prompt containing the missing items list. It is instructed to return a JSON array of `{ name, estimated_unit_price, source_note, alternative_suggestion }`. An optional HTTP Request node can be chained to perform a live web search (SerpAPI or similar) to ground the estimates.
+
+**Stage 6 — Merge & Calculate**
+A second `Code` node combines matched items + AI-estimated items, calculates line totals, grand total, and flags which items are estimated vs. confirmed.
+
+**Stage 7 — Customer Email (Gmail)**
 An HTML email is built inline with a professional quotation table. Estimated items are highlighted in amber with an "⚠ Estimated Market Price" badge. A disclaimer footer is appended if any fallback pricing was used.
-Stage 8 — Internal Notification
+
+**Stage 8 — Internal Notification**
 A parallel branch sends the full payload (including missing materials and AI suggestions) to the internal marketing/ops team via Slack, Teams, or a second Gmail node.
 
-AI Fallback Prompt Design
+---
+
+### AI Fallback Prompt Design
+
 The prompt is dynamically constructed:
+
+```
 You are a construction materials pricing expert in the Philippines.
 The following materials were NOT found in our internal price list or are currently unavailable:
 
@@ -58,9 +76,14 @@ For each item:
 
 Return ONLY a valid JSON array with this exact shape:
 [{ "name": "", "quantity": 0, "estimated_unit_price": 0, "subtotal": 0, "source_note": "", "alternative": "" }]
+```
 
-Part 2: Complete n8n JSON Workflow
-json{
+---
+
+## Part 2: Complete n8n JSON Workflow
+
+```json
+{
   "name": "Construction Quotation System",
   "nodes": [
     {
@@ -346,14 +369,31 @@ json{
   "updatedAt": "2026-01-01T00:00:00.000Z",
   "versionId": "1"
 }
+```
 
-Post-Import Checklist
-Credentials to Replace
-PlaceholderWhat to SetREPLACE_WITH_GSHEETS_CREDENTIAL_IDYour Google Sheets OAuth2 credentialREPLACE_WITH_OPENAI_CREDENTIAL_IDYour OpenAI API key credentialREPLACE_WITH_GMAIL_CREDENTIAL_IDYour Gmail OAuth2 credential (used twice)REPLACE_WITH_YOUR_GOOGLE_SHEET_IDThe Sheet ID from your Google Sheets URLREPLACE_WITH_ERROR_WORKFLOW_IDOptional: a separate n8n error-handler workflow
-Google Sheet Expected Format
-Material NameUnit PriceAvailabilityPortland Cement (40kg)285YesSteel Bar 10mm420NoHollow Blocks18Yes
-Sample Webhook Test Payload
-json{
+---
+
+## Post-Import Checklist
+
+### Credentials to Replace
+| Placeholder | What to Set |
+|---|---|
+| `REPLACE_WITH_GSHEETS_CREDENTIAL_ID` | Your Google Sheets OAuth2 credential |
+| `REPLACE_WITH_OPENAI_CREDENTIAL_ID` | Your OpenAI API key credential |
+| `REPLACE_WITH_GMAIL_CREDENTIAL_ID` | Your Gmail OAuth2 credential (used twice) |
+| `REPLACE_WITH_YOUR_GOOGLE_SHEET_ID` | The Sheet ID from your Google Sheets URL |
+| `REPLACE_WITH_ERROR_WORKFLOW_ID` | Optional: a separate n8n error-handler workflow |
+
+### Google Sheet Expected Format
+| Material Name | Unit Price | Availability |
+|---|---|---|
+| Portland Cement (40kg) | 285 | Yes |
+| Steel Bar 10mm | 420 | No |
+| Hollow Blocks | 18 | Yes |
+
+### Sample Webhook Test Payload
+```json
+{
   "customer_email": "client@example.com",
   "requested_materials": [
     { "name": "Portland Cement (40kg)", "quantity": 50 },
